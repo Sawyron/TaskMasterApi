@@ -10,8 +10,10 @@ import org.sawyron.taskmaster.users.User;
 import org.sawyron.taskmaster.users.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +31,8 @@ public class TaskServiceImpl implements TaskService {
             TaskRepository taskRepository,
             UserRepository userRepository,
             Function<TaskCreateRequest, Task> taskCreateMapper,
-            Function<Task, TaskResponse> taskResponseMapper) {
+            Function<Task, TaskResponse> taskResponseMapper
+    ) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.taskCreateMapper = taskCreateMapper;
@@ -40,7 +43,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public void createTask(TaskCreateRequest request, UUID userId) {
         User user = userRepository.findById(userId).orElseThrow(() ->
-                new RuntimeException("user not found (id: %s)".formatted(userId)));
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found (id: %s)".formatted(userId)));
         Task task = taskCreateMapper.apply(request);
         task.setUser(user);
         taskRepository.save(task);
@@ -67,7 +70,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public void removeUserTask(UUID taskId, UUID userId) {
-        taskRepository.findByIdAndUserId(taskId, userId)
-                .ifPresent(taskRepository::delete);
+        Task task = taskRepository.findByIdAndUserId(taskId, userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Task with id %s for user with %s is not found".formatted(taskId, userId))
+                );
+        taskRepository.delete(task);
     }
 }

@@ -31,7 +31,7 @@ class UserDetailsServiceImplTest {
         user.setId(UUID.fromString("bbcc4621-d88f-4a94-ae2f-b38072bf5087"));
         user.setPassword("password");
         user.setName(username);
-        when(userRepository.findByName(username)).thenReturn(Optional.of(user));
+        when(userRepository.findByName(eq(username))).thenReturn(Optional.of(user));
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
@@ -48,10 +48,11 @@ class UserDetailsServiceImplTest {
 
     @Test
     void whenUserDoesNotExist_thenThrowUsernameNotFoundExceptionException() {
-        when(userRepository.findByName("user")).thenReturn(Optional.empty());
+        String username = "user";
+        when(userRepository.findByName(eq(username))).thenReturn(Optional.empty());
 
-        assertThrows(UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername("user"));
-        verify(userRepository).findByName("user");
+        assertThrows(UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername(username));
+        verify(userRepository).findByName(username);
         verifyNoMoreInteractions(userRepository);
     }
 }

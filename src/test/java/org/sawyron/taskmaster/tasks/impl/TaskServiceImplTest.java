@@ -19,6 +19,8 @@ import org.sawyron.taskmaster.users.UserRepository;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +63,7 @@ class TaskServiceImplTest {
         user.setId(UUID.fromString("bbcc4621-d88f-4a94-ae2f-b38072bf5087"));
         user.setId(UUID.fromString("d445f4f5-0eda-4f7c-a36c-7ecc4ad4168a"));
         user.setName("user");
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findById(eq(user.getId()))).thenReturn(Optional.of(user));
 
         taskService.createTask(new TaskCreateRequest("title", "description"), user.getId());
 
@@ -72,12 +74,13 @@ class TaskServiceImplTest {
     @Test
     void whenUserDoesNotExists_thenThrowRuntimeException() {
         UUID userId = UUID.fromString("bbcc4621-d88f-4a94-ae2f-b38072bf5087");
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findById(eq(userId))).thenReturn(Optional.empty());
 
-        assertThrows(
-                RuntimeException.class,
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
                 () -> taskService.createTask(new TaskCreateRequest("", ""), userId)
         );
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 
         verify(userRepository).findById(userId);
     }
@@ -91,7 +94,10 @@ class TaskServiceImplTest {
             task.setTitle("task_%d".formatted(i));
         }
         Pageable pageable = PageRequest.of(0, tasks.size());
-        when(taskRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)).thenReturn(new PageImpl<>(tasks));
+        when(taskRepository.findByUserIdOrderByCreatedAtDesc(
+                eq(userId),
+                eq(pageable))
+        ).thenReturn(new PageImpl<>(tasks));
 
         List<TaskResponse> tasksResponse = taskService.findUserTasks(userId, pageable);
 
@@ -108,7 +114,7 @@ class TaskServiceImplTest {
         var task = new Task();
         task.setTitle("title");
         task.setDescription("desc");
-        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.of(task));
+        when(taskRepository.findByIdAndUserId(eq(taskId), eq(userId))).thenReturn(Optional.of(task));
 
         taskService.updateTask(taskId, userId, new TaskUpdateRequest("new_title", "new_desc"));
 
@@ -121,14 +127,41 @@ class TaskServiceImplTest {
     }
 
     @Test
-    void whenTaskIsNotPresent_thenDoNothing() {
+    void whenUpdateTaskIsNotPresent_thenDoNothing() {
         UUID taskId = UUID.fromString("bbcc4621-d88f-4a94-ae2f-b38072bf5087");
         UUID userId = UUID.fromString("d445f4f5-0eda-4f7c-a36c-7ecc4ad4168a");
-        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.empty());
+        when(taskRepository.findByIdAndUserId(eq(taskId), eq(userId))).thenReturn(Optional.empty());
 
         taskService.updateTask(taskId, userId, new TaskUpdateRequest("", ""));
 
         verify(taskRepository).findByIdAndUserId(taskId, userId);
         verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void whenRemoveUserTask_thenDeleteTask() {
+        UUID taskId = UUID.fromString("bbcc4621-d88f-4a94-ae2f-b38072bf5087");
+        UUID userId = UUID.fromString("d445f4f5-0eda-4f7c-a36c-7ecc4ad4168a");
+        var task = new Task();
+        when(taskRepository.findByIdAndUserId(eq(taskId), eq(userId))).thenReturn(Optional.of(task));
+
+        taskService.removeUserTask(taskId, userId);
+
+        verify(taskRepository).findByIdAndUserId(taskId, userId);
+    }
+
+    @Test
+    void whenRemoveUserTaskTaskNotFound_thenThrowException() {
+        UUID taskId = UUID.fromString("bbcc4621-d88f-4a94-ae2f-b38072bf5087");
+        UUID userId = UUID.fromString("d445f4f5-0eda-4f7c-a36c-7ecc4ad4168a");
+        when(taskRepository.findByIdAndUserId(eq(taskId), eq(userId))).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.removeUserTask(taskId, userId)
+        );
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+
+        verify(taskRepository).findByIdAndUserId(taskId, userId);
     }
 }
