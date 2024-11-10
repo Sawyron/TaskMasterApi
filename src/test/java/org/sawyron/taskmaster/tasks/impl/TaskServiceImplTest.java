@@ -16,6 +16,9 @@ import org.sawyron.taskmaster.tasks.mappers.TaskCreateRequestMapper;
 import org.sawyron.taskmaster.tasks.mappers.TaskResponseMapper;
 import org.sawyron.taskmaster.users.User;
 import org.sawyron.taskmaster.users.UserRepository;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -87,9 +90,10 @@ class TaskServiceImplTest {
             Task task = tasks.get(i);
             task.setTitle("task_%d".formatted(i));
         }
-        when(taskRepository.findByUserIdOrderByCreatedAtDesc(userId)).thenReturn(tasks);
+        Pageable pageable = PageRequest.of(0, tasks.size());
+        when(taskRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)).thenReturn(new PageImpl<>(tasks));
 
-        List<TaskResponse> tasksResponse = taskService.findUserTasks(userId);
+        List<TaskResponse> tasksResponse = taskService.findUserTasks(userId, pageable);
 
         assertEquals(tasks.size(), tasksResponse.size());
         for (int i = 0; i < tasksResponse.size(); i++) {

@@ -5,6 +5,7 @@ import org.sawyron.taskmaster.auth.UserDetailsAdapter;
 import org.sawyron.taskmaster.tasks.dtos.TaskCreateRequest;
 import org.sawyron.taskmaster.tasks.dtos.TaskResponse;
 import org.sawyron.taskmaster.tasks.dtos.TaskUpdateRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,8 +33,11 @@ public class TaskController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskResponse>> findAllTasks(@AuthenticationPrincipal UserDetailsAdapter userDetails) {
-        List<TaskResponse> tasks = taskService.findUserTasks(userDetails.getId());
+    public ResponseEntity<List<TaskResponse>> findAllTasks(
+            @AuthenticationPrincipal UserDetailsAdapter userDetails,
+            Pageable pageable
+    ) {
+        List<TaskResponse> tasks = taskService.findUserTasks(userDetails.getId(), pageable);
         return new ResponseEntity<>(tasks, HttpStatus.OK);
     }
 

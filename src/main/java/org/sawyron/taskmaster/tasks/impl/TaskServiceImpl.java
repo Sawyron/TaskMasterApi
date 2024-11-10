@@ -8,6 +8,8 @@ import org.sawyron.taskmaster.tasks.dtos.TaskResponse;
 import org.sawyron.taskmaster.tasks.dtos.TaskUpdateRequest;
 import org.sawyron.taskmaster.users.User;
 import org.sawyron.taskmaster.users.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,8 +47,8 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public List<TaskResponse> findUserTasks(UUID userId) {
-        List<Task> tasks = taskRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    public List<TaskResponse> findUserTasks(UUID userId, Pageable pageable) {
+        Page<Task> tasks = taskRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
         return tasks.stream()
                 .map(taskResponseMapper)
                 .toList();
